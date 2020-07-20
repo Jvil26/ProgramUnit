@@ -1,0 +1,10 @@
+.module-instruct{
+  display: flex;
+  justify-content: center;
+}
+.module-instruct{
+ &__container{
+   width: 100%;
+   max-width: 425px;
+ }
+}

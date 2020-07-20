@@ -1,0 +1,11 @@
+.module-edit{
+  display: flex;
+  justify-content: center;
+  height: 100%;
+}
+.module-edit{
+  &__container{
+    max-width: 425px;
+    width: 100%;
+  }
+}
