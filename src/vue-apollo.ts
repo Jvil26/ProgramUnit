@@ -20,7 +20,7 @@ const AUTH_TOKEN = 'apollo-token';
 
 //  Mongo App Setup
 //  ! Replace with you App ID from Mongo Realm
-export const APP_ID = 'microapp-lokxi';
+export const APP_ID = 'programunit-tkidm';
 
 const app = new RealmWeb.App({
   id: APP_ID,
@@ -52,7 +52,6 @@ const authorizationHeaderLink = setContext(async (_, { headers }) => {
   };
 });
 // Construct a new Apollo HttpLink that connects to your app's GraphQL endpoint
-
 const httpLink = new HttpLink({ uri: graphql_url });
 // Files URL root
 export const filesRoot = process.env.VUE_APP_FILES_ROOT || httpEndpoint.substr(0, httpEndpoint.indexOf('/graphql'));
@@ -82,8 +81,9 @@ const defaultOptions = {
   link: authorizationHeaderLink.concat(httpLink),
 
   // Override default cache
-  cache: new InMemoryCache(),
-
+  cache: new InMemoryCache({
+    addTypename: false,
+  }),
   // Override the way the Authorization header is set
   // getAuth: (tokenName) => ...
 

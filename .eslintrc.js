@@ -1,4 +1,5 @@
 module.exports = {
+
   root: true,
   env: {
     node: true,
@@ -15,8 +16,10 @@ module.exports = {
     'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
     'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
     'linebreak-style': "off",
-    'import/no-extraneous-dependencies':'off'
+    'import/no-extraneous-dependencies':'off',
+    
   },
+  
   overrides: [
     {
       files: [

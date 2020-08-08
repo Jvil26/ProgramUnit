@@ -1,5 +1,4 @@
 .module-default{
-  max-height: 725px;
   overflow: hidden;
   & .hr{
     border-bottom: 1px var(--v-secondary-base) solid;
@@ -7,14 +6,13 @@
 }
 .module-default{
   &.container{
-    display:flex;
     flex-direction: column;
     align-items: center;
   }
   &__container{
     display: flex;
     margin-top: 64px;
-    max-width: 236px;
+    max-width: 800px;
     flex-direction: column;
     align-items: center;
   }
