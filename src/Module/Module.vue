@@ -4,11 +4,7 @@
     <div class="module__container">
       <div class="module__title">
         <div class="module__image rounded-circle">
-          <v-img
-          height="87px"
-          max-width="93px"
-          src="https://www.notion.so/image/https%3A%2F%2Fs3-us-west-2.amazonaws.com%2Fsecure.notion-static.com%2F2c9addc0-037f-4fd8-a226-e21468527db6%2FUntitled.png?table=block&id=c58eba0c-df1a-46c2-8bee-5578fde10ebe&width=2610&cache=v2">
-          </v-img>
+          <UploadImg :currentPage="currentPage" />
         </div>
         <div class="module__header text-md-h5 text-sm-subtitle-1 d-flex align-end">
           <input type="text" class="module__header-text" :value="moduleName">
@@ -41,11 +37,18 @@
 <script lang="ts">
 import Vue from 'vue';
 import '@/styles/module.scss';
+import { ModuleData, ModuleNameMutation } from '@/graphql/graphql';
+import gql from 'graphql-tag';
+import VueApollo from 'vue-apollo';
 import * as Module from './components';
+import { UploadImg } from './components';
 
 export default Vue.extend({
   name: 'Microapp',
+  props: {
+  },
   components: {
+    UploadImg,
     'module-instruct': Module.Instruct,
     'module-metrics': Module.Metrics,
     'module-edit': Module.Edit,
@@ -57,6 +60,8 @@ export default Vue.extend({
     pages: ['Metrics', 'Instruct', 'Outcomes', 'edit', 'Preview'],
     currentPage: 'Instruct',
   }),
+  methods: {
+  },
   computed: {
     getComponent() {
       return `module-${this.currentPage.toLowerCase()}`;

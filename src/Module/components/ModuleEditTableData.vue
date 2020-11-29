@@ -3,16 +3,20 @@
       <v-card>
         <v-card-title>{{ selectedName }}</v-card-title>
     <v-data-table
+        v-if="researchData"
         style="margin-top: 50px"
         :headers="headers"
-        :items="filteredQuestions"
+        :items="researchData.questions"
         :items-per-page="5"
         class="elevation-1">
-        <template #item.links="{ value }">
-            <a style="color:black" v-for="(link, i) in value"
+        <template v-slot:[`item.links`]="{ value }">
+          <br>
+         <a style="color:black;" v-for="(link, i) in value"
             :key="i" target="_blank" :href="value[i]">
               {{ value[i] }}
-            </a>
+          <br>
+          <br>
+          </a>
         </template>
         </v-data-table>
         </v-card>
@@ -20,19 +24,14 @@
 </template>
 <script lang="ts">
 import Vue from 'vue';
-// import gql from 'graphql-tag';
+import { previewsData } from '@/graphql/graphql';
 
 export default Vue.extend({
-  name: 'Questions+LinksData',
-  props: ['teams', 'headers', 'questions', 'selectedName'],
+  name: 'ModuleEditTableData',
+  props: ['headers', 'researchData', 'selectedName'],
   apollo: {
   },
   data: () => ({
   }),
-  computed: {
-    filteredQuestions() {
-      return this.questions.filter((question) => question.teamName === this.selectedName);
-    },
-  },
 });
 </script>

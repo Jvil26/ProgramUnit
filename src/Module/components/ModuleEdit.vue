@@ -1,6 +1,8 @@
 <template>
 <v-container style="position:relative" class="module-edit">
   <div class="module-edit__container">
+    <div v-if="$apollo.loading" class="loadingClass">Loading...</div>
+    <div v-if="previews && allTeam">
     <v-data-table
         v-if="show"
         style="margin-top: 50px"
@@ -19,9 +21,10 @@
         </v-data-table>
     <v-icon v-if="!show" @click="show = true" large depressed class="back white-text"
         style="cursor: pointer">keyboard_backspace</v-icon>
-  <QuestionLinkData :show="show" :headers="headers"
-  :questions="questions" :selectedName="selectedName"
-  :teams="teams" v-if="!show" readonly/>
+  <ModuleEditTableData :show="show" :headers="headers"
+  :researchData="researchData" :selectedName="selectedName"
+  v-if="!show" readonly/>
+      </div>
       </div>
 </v-container>
 </template>
@@ -30,29 +33,31 @@
 import Vue from 'vue';
 // import gql from 'graphql-tag';
 import gql from 'graphql-tag';
-import QuestionLinkData from './QuestionsLinksData.vue';
+import { previewsData, queryAllTeam } from '@/graphql/graphql';
+import ModuleEditTableData from './ModuleEditTableData.vue';
 
 export default Vue.extend({
   name: 'ModuleEdit',
   components: {
-    QuestionLinkData,
+    ModuleEditTableData,
   },
   apollo: {
-    allTeam: gql`
-      query {
-allTeam {
-team {
-name
-totalL
-totalQ
-}
-  }
-  }`,
+    previews: {
+      query: previewsData,
+      pollInterval: 5000,
+    },
+    allTeam: {
+      query: queryAllTeam,
+      pollInterval: 5000,
+    },
   },
   data: () => ({
-    selectedName: null,
+    previews: [],
+    allTeam: [],
+    selectedName: '',
     show: true,
     dialog: false,
+    researchData: {},
     teamHeaders: [
       {
         text: 'Team Name',
@@ -86,28 +91,12 @@ totalQ
         align: 'center',
       },
     ],
-    questions: [
-      {
-        teamName: 'team sushi',
-        name: 'What is Alan AI?',
-        links: ['https://alan.app/'],
-      },
-      {
-        teamName: 'team sushi',
-        name: 'What is Google?',
-        links: ['https://www.google.com/'],
-      },
-      {
-        teamName: 'team pizza',
-        name: 'How do I learn to code?',
-        links: ['https://alan.app/',
-          '\nhttps://vuetifyjs.com/en/components/data-tables/#data-tables'],
-      },
-    ],
   }),
   methods: {
-    selectedItem(name) {
+    selectedItem(name: string) {
       this.selectedName = name;
+      const i = this.previews.findIndex((x: {teamName: string}) => x.teamName === name);
+      this.researchData = this.previews[i];
     },
   },
 });

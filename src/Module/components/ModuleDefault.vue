@@ -41,24 +41,18 @@
       </v-expansion-panels>
     </div>
     <div class="module-default__container">
-      <v-form style="text-align:center; margin-bottom: 70px;">
-          <v-text-field
-            style="width:500px;"
-            outlined
-            color="black"
-            @keydown.enter.prevent="addQuestion" class="question" v-if="showInstructions"
-             placeholder="What research question do you have?" v-model="another">
-             </v-text-field>
-             <p v-if="feedback" class="red--text mt-0">{{ feedback }}</p>
-          </v-form>
+      <div v-if="$apollo.loading">Loading...</div>
+      <div v-if="preview && allTeam">
+      <AddQuestion :preview="preview" :allTeam="allTeam"
+      :showInstructions="showInstructions" />
           <div v-if="showInstructions">
           <v-expansion-panels
           class="panels" v-for="(question, i) in preview.questions" :key="i">
-        <v-dialog v-model="dialog" persistent max-width="290">
-          <template v-slot:activator="{ on, attrs }">
+        <v-dialog v-model="dialog" :retain-focus="false" max-width="290">
+          <template v-slot:activator="{ on }">
           <v-expansion-panel style="border: 1px solid black">
       <v-expansion-panel-header>
-        <v-icon class="delete" align-center v-bind="attrs"
+        <v-icon class="delete" align-center
             v-on="on" @click="passData(question)">clear</v-icon>
         <h4 style="text-align:center; text-transform:capitalize">{{ question.name }}</h4>
       </v-expansion-panel-header>
@@ -67,18 +61,19 @@
           <a class="search" target="_blank" :href="question.links[k]">
             <v-icon>forward</v-icon>
             </a>
-          <p style="font-size:0.8em">{{ question.links[k] }}</p>
+          <p style="font-size:0.8em;">{{ question.links[k] }}</p>
       </div>
         </v-expansion-panel-content>
           <v-expansion-panel-content>
-    <v-form>
-    <v-text-field
+      <v-form>
+        <v-text-field
         @keydown.enter.prevent="addLink(i)"
         color="black"
         placeholder="Log research link here"
-        v-model="body"
-    ></v-text-field>
-    <p v-if="feedback" style="text-align:center" class="red--text mt-0">{{ feedback }}</p>
+        v-model="anotherLink"
+        :disabled="disabled == 0"
+        ></v-text-field>
+    <p style="text-align:center" class="red--text mt-0">{{ Lfeedback }}</p>
     </v-form>
     </v-expansion-panel-content>
     </v-expansion-panel>
@@ -99,6 +94,7 @@
           </v-expansion-panels>
           </div>
     </div>
+    </div>
   </v-container>
 </template>
 
@@ -106,125 +102,77 @@
 import Vue from 'vue';
 // import gql from 'graphql-tag';
 import gql from 'graphql-tag';
-import AddLink from './AddLink.vue';
+import {
+  deleteQuestion, addLink, previewData, queryAllTeam, linkQuery,
+} from '@/graphql/graphql';
+import AddQuestion from './AddQuestion.vue';
 import Instruct from './ModuleInstruct.vue';
 
 export default Vue.extend({
   name: 'ModuleDefault',
   components: {
     'module-instruct': Instruct,
+    AddQuestion,
   },
   apollo: {
     preview: {
-      query: gql` query ($teamName: String!) {
-  preview(query: { teamName: $teamName }){
-    teamName
-    totalL
-    totalQ
-    questions {
-      name
-      links
-    }
-}
-  }`,
-      // Parameters
+      query: previewData,
       variables: {
-        teamName: 'Team 7',
+        teamName: 'Team Ninjas',
       },
     },
-    allTeam: gql`
-    query  {
-  allTeam{
-    team {
-      name
-      totalL
-      totalQ
-    }
-  }
-}`,
+    allTeam: {
+      query: queryAllTeam,
+    },
+    link: {
+      query: linkQuery,
+    },
   },
   data: () => ({
+    preview: { questions: [{ name: '', links: [''] }], teamName: '', totalL: 0 },
+    allTeam: { team: [{ name: '', totalL: 0, totalQ: 0 }] },
+    disabled: -1,
     delete: '',
     showInstructions: true,
     dialog: false,
-    obj: {},
-    another: null,
-    feedback: null,
-    body: null,
+    Lfeedback: '',
+    anotherLink: '',
   }),
   methods: {
-    async addQuestion() {
-      if (this.another) {
-        const i = this.allTeam.team.findIndex((x) => x.name === this.preview.teamName);
-        console.log(this.allTeam);
-        this.obj.name = this.another;
-        this.obj.links = [];
-        this.preview.questions.push(this.obj);
-        this.feedback = null;
-        this.another = null;
-        this.obj = {};
-        this.allTeam.team[i].totalQ = this.preview.questions.length;
-        await this.$apollo.mutate({
-          // Query
-          mutation: gql`mutation ($team: [AllTeamTeamUpdateInput], $questions: [PreviewQuestionUpdateInput], $totalQ: Int!, $teamName: String!) {
-          updateOnePreview(query: {teamName: $teamName}, set: {questions: $questions, totalQ: $totalQ}){
-            totalL
-            totalQ
-            questions {
-              name
-              links
-            }
-          }
-          updateOneAllTeam(set: {team: $team}){
-            team { 
-              name
-              totalQ
-            }
-          }
-        }`,
-          // Parameters
-          variables: {
-            teamName: this.preview.teamName,
-            questions: this.preview.questions,
-            totalQ: this.preview.questions.length,
-            team: this.allTeam.team,
-          },
-        });
-      } else {
-        this.feedback = 'You must type a question first';
+    checkDisabled(totalQ: number, numQuestions: number) {
+      if (totalQ >= numQuestions) {
+        this.Lfeedback = '';
+        this.disabled = 1;
+      } else if (totalQ < numQuestions) {
+        this.disabled = 0;
+        this.Lfeedback = `You must log ${numQuestions} questions to be able to log links`;
       }
     },
-    passData(question) {
-      console.log(question);
+    passData(question: { name: string }) {
       this.delete = question.name;
     },
     async deleteQuestion() {
-      const i = this.preview.questions.findIndex((x) => x.name === this.delete);
-      const k = this.allTeam.team.findIndex((x) => x.name === this.preview.teamName);
-      console.log(this.preview.questions[i].links.length);
+      const i = this.preview.questions.findIndex((x: {name: string}) => x.name === this.delete);
+      const k = this.allTeam.team.findIndex(
+        (x: {name: string}) => x.name === this.preview.teamName,
+      );
       this.preview.totalL -= this.preview.questions[i].links.length;
-      console.log(this.preview.totalL);
-      this.preview.questions = this.preview.questions.filter((item) => item.name !== this.delete);
+      this.preview.questions = this.preview.questions.filter(
+        (item: {name: string}) => item.name !== this.delete,
+      );
       this.allTeam.team[k].totalQ = this.preview.questions.length;
       this.allTeam.team[k].totalL = this.preview.totalL;
+      const sortedByQuestions = this.allTeam.team.sort(
+        (a: { totalQ: number }, b: { totalQ: number }) => b.totalQ - a.totalQ,
+      ).slice();
+      const sortedByLinks = this.allTeam.team.sort(
+        (a: { totalL: number }, b: { totalL: number }) => b.totalL - a.totalL,
+      ).slice();
+      console.log(sortedByQuestions);
+      console.log(sortedByLinks);
       await this.$apollo.mutate({
         // Query
-        mutation: gql`mutation ($team: [AllTeamTeamUpdateInput], $questions: [PreviewQuestionUpdateInput], $totalL: Int!, $totalQ: Int!, $teamName: String!) {
-          updateOnePreview(query: {teamName: $teamName}, set: {questions: $questions, totalL: $totalL, totalQ: $totalQ}){
-            totalL
-            totalQ
-            questions {
-              name
-              links
-            }
-          }
-          updateOneAllTeam(set: {team: $team}){
-            team { 
-              name
-              totalQ
-            }
-          }
-        }`,
+        mutation: deleteQuestion,
         // Parameters
         variables: {
           teamName: this.preview.teamName,
@@ -232,62 +180,120 @@ export default Vue.extend({
           totalL: this.preview.totalL,
           totalQ: this.preview.questions.length,
           team: this.allTeam.team,
+          Top10: sortedByQuestions.slice(0, 10),
+          Top20: sortedByQuestions.slice(10, 20),
+          Top30: sortedByQuestions.slice(20, 30),
+          Top40: sortedByQuestions.slice(30, 40),
+          Top50: sortedByQuestions.slice(40, 50),
+          Top60: sortedByQuestions.slice(50, 60),
+          Top70: sortedByQuestions.slice(60, 70),
+          Top80: sortedByQuestions.slice(70, 80),
+          Top90: sortedByQuestions.slice(80, 90),
+          Top100: sortedByQuestions.slice(90, 100),
+          LinksTop10: sortedByLinks.slice(0, 10),
+          LinksTop20: sortedByLinks.slice(10, 20),
+          LinksTop30: sortedByLinks.slice(20, 30),
+          LinksTop40: sortedByLinks.slice(30, 40),
+          LinksTop50: sortedByLinks.slice(40, 50),
+          LinksTop60: sortedByLinks.slice(50, 60),
+          LinksTop70: sortedByLinks.slice(60, 70),
+          LinksTop80: sortedByLinks.slice(70, 80),
+          LinksTop90: sortedByLinks.slice(80, 90),
+          LinksTop100: sortedByLinks.slice(90, 100),
+        },
+        // Update the cache with the result
+        // The query will be updated with the optimistic response
+        // and then with the real result of the mutation
+        update: (store, { data: { updateOnePreview } }) => {
+          // Read the data from our cache for this query.
+          const data: any = store.readQuery({
+            query: previewData,
+            variables: {
+              teamName: 'Team Ninjas',
+            },
+          });
+          // Add our tag from the mutation to the end
+          data.preview.totalQ = updateOnePreview.totalQ;
+          // Write our data back to the cache.
+          store.writeQuery({
+            query: previewData,
+            data,
+            variables: {
+              teamName: 'Team Ninjas',
+            },
+          });
         },
       });
     },
-    async addLink(i) {
-      if (this.body) {
-        console.log(this.preview.totalL);
+    async addLink(i: number) {
+      if (this.anotherLink) {
+        this.preview.questions[i].links.push(this.anotherLink);
         const k = this.allTeam.team.findIndex((x) => x.name === this.preview.teamName);
         this.preview.totalL += 1;
-        console.log(this.preview.totalL);
-        this.preview.questions[i].links.push(this.body);
         this.allTeam.team[k].totalL = this.preview.totalL;
+        const sortedByQuestions = this.allTeam.team.sort(
+          (a: { totalQ: number }, b: { totalQ: number }) => b.totalQ - a.totalQ,
+        ).slice();
+        const sortedByLinks = this.allTeam.team.sort(
+          (a: { totalL: number }, b: { totalL: number }) => b.totalL - a.totalL,
+        ).slice();
         await this.$apollo.mutate({
           // Query
-          mutation: gql`mutation ($team: [AllTeamTeamUpdateInput], $questions: [PreviewQuestionUpdateInput], $totalL: Int!, $totalQ: Int!, $teamName: String!) {
-          updateOnePreview(query: {teamName: $teamName}, set: {questions: $questions, totalL: $totalL, totalQ: $totalQ}){
-            totalL
-            totalQ
-            questions {
-              name
-              links
-            }
-          }
-           updateOneAllTeam(set: {team: $team}){
-            team { 
-              name
-              totalQ
-            }
-          }
-        }`,
+          mutation: addLink,
           // Parameters
           variables: {
-            teamName: this.preview.teamName,
+            link: this.anotherLink,
+            team: this.allTeam.team,
             questions: this.preview.questions,
             totalL: this.preview.totalL,
-            totalQ: this.preview.questions.length,
-            team: this.allTeam.team,
+            teamName: this.preview.teamName,
+            Top10: sortedByQuestions.slice(0, 10),
+            Top20: sortedByQuestions.slice(10, 20),
+            Top30: sortedByQuestions.slice(20, 30),
+            Top40: sortedByQuestions.slice(30, 40),
+            Top50: sortedByQuestions.slice(40, 50),
+            Top60: sortedByQuestions.slice(50, 60),
+            Top70: sortedByQuestions.slice(60, 70),
+            Top80: sortedByQuestions.slice(70, 80),
+            Top90: sortedByQuestions.slice(80, 90),
+            Top100: sortedByQuestions.slice(90, 100),
+            LinksTop10: sortedByLinks.slice(0, 10),
+            LinksTop20: sortedByLinks.slice(10, 20),
+            LinksTop30: sortedByLinks.slice(20, 30),
+            LinksTop40: sortedByLinks.slice(30, 40),
+            LinksTop50: sortedByLinks.slice(40, 50),
+            LinksTop60: sortedByLinks.slice(50, 60),
+            LinksTop70: sortedByLinks.slice(60, 70),
+            LinksTop80: sortedByLinks.slice(70, 80),
+            LinksTop90: sortedByLinks.slice(80, 90),
+            LinksTop100: sortedByLinks.slice(90, 100),
           },
         });
-        this.body = null;
+        this.anotherLink = '';
+        this.Lfeedback = '';
       } else {
-        this.feedback = 'You must enter a research link';
+        this.Lfeedback = 'You must enter a research link';
       }
     },
+  },
+  mounted() {
+    window.setInterval(async () => {
+      const outComes = await this.$apollo.query({
+        query: linkQuery,
+      });
+      const result = await this.$apollo.query({
+        query: previewData,
+        variables: {
+          teamName: 'Team Ninjas',
+        },
+      });
+      this.checkDisabled(result.data.preview.totalQ, outComes.data.link.numQuestions);
+    }, 200);
   },
 });
 </script>
 
 <style scoped>
-.question{
-  width: 400px;
-}
-
-.question >>> :placeholder-shown {
-    font-size: 1.7em;
-}
-
 .panels{
   margin: 20px auto;
   width: 400px;

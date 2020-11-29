@@ -1,6 +1,8 @@
 <template>
   <v-container class="module-outcomes">
     <div class="module-outcomes__container">
+    <div v-if="$apollo.loading">Loading...</div>
+    <div v-if="link">
     <v-toolbar
       flat
       dense
@@ -111,31 +113,28 @@
         <span><v-btn depressed outlined height="40px" width="200px"
         @click="save()"><h3>Save</h3></v-btn></span>
         </v-flex>
+        </div>
     </div>
   </v-container>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
+import { linkQuery, outComeMutation } from '@/graphql/graphql';
 import gql from 'graphql-tag';
 // import gql from 'graphql-tag';
 
 export default Vue.extend({
   name: 'ModuleOutcomes',
   apollo: {
-    link: gql`
-    query {
-      link {
-        numLinks
-        numQuestions
-        currentQ
-        currentL
-      }
-    }`,
+    link: {
+      query: linkQuery,
+    },
   },
   data: () => ({
-    questions: 0,
-    links: 0,
+    link: {
+      numQuestions: 0, numLinks: 0, currentQ: 0, currentL: 0,
+    },
     interval: null,
   }),
   methods: {
@@ -143,18 +142,21 @@ export default Vue.extend({
       // Call to the graphql mutation
       await this.$apollo.mutate({
       // Query
-        mutation: gql`mutation ($numQuestions: Int!, $numLinks: Int!) {
-        updateOneLink(set: { numQuestions: $numQuestions, numLinks: $numLinks, currentQ: $numQuestions, currentL: $numLinks, }) {
-          numQuestions
-          numLinks
-          currentL
-          currentQ
-        }
-      }`,
+        mutation: outComeMutation,
         // Parameters
         variables: {
           numQuestions: this.link.numQuestions,
           numLinks: this.link.numLinks,
+        },
+        update: (store, { data: { updateOneLink } }) => {
+          const data: any = store.readQuery({
+            query: linkQuery,
+          });
+          data.link = updateOneLink;
+          store.writeQuery({
+            query: linkQuery,
+            data,
+          });
         },
       });
     },

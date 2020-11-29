@@ -2,6 +2,8 @@
 <!--  TODO: make the inputs into actual components -->
   <v-container class="module-instruct">
     <div class="module-instruct__container">
+      <div v-if="$apollo.loading">Loading...</div>
+      <div v-if="instruct">
       <h3 class="mb-3">Instructions</h3>
       <v-textarea
           solo auto-grow
@@ -37,18 +39,18 @@
         </div>
         <v-btn @click="addInstruct" v-if="!readonly"
         depressed outlined width="425px"><v-icon>add</v-icon></v-btn>
-        <v-flex v-if="!readonly" style="margin-top: 120px">
-        <v-btn depressed outlined height="40px"
-        width="200px" class="mr-6"><h3>Discard</h3></v-btn>
+        <v-flex v-if="!readonly" style="margin-top: 120px; text-align:center">
         <span><v-btn depressed outlined height="40px" width="200px"
         @click="save()"><h3>Save</h3></v-btn></span>
         </v-flex>
+    </div>
     </div>
   </v-container>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
+import { instructQuery, instructMutation } from '@/graphql/graphql';
 import gql from 'graphql-tag';
 
 export default Vue.extend({
@@ -60,47 +62,37 @@ export default Vue.extend({
     },
   },
   apollo: {
-    instruct: gql`
-      query {
-        instruct {
-          instruction
-number
-steps {
-name
-rank
-},
-  },
-}`,
+    instruct: instructQuery,
   },
   data: () => ({
-
+    instruct: { instruction: '', number: 0, steps: [{ name: '', rank: 0 }] },
   }),
   methods: {
     addInstruct() {
       this.instruct.number += 1;
-      const instruct = { name: '', rank: this.instruct.number };
-      this.instruct.steps.push(instruct);
-      console.log(this.instruct.steps);
+      const newInstruct = { name: '', rank: this.instruct.number };
+      this.instruct.steps.push(newInstruct);
     },
     async save() {
       // Call to the graphql mutation
       await this.$apollo.mutate({
       // Query
-        mutation: gql`mutation ($instruction: String!, $number: Int!, $steps: [InstructStepUpdateInput]) {
-        updateOneInstruct(set: { instruction: $instruction, number: $number, steps: $steps  }) {
-          instruction
-          steps{
-            rank, 
-            name
-          }
-          number
-        }
-      }`,
+        mutation: instructMutation,
         // Parameters
         variables: {
           instruction: this.instruct.instruction,
           steps: this.instruct.steps,
           number: this.instruct.number,
+        },
+        update: (store, { data: { updateOneInstruct } }) => {
+          const data: any = store.readQuery({
+            query: instructQuery,
+          });
+          data.instruct = updateOneInstruct;
+          store.writeQuery({
+            query: instructQuery,
+            data,
+          });
         },
       });
     },
